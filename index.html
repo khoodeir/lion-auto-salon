@@ -133,6 +133,8 @@
   let employeesShowInactive = false;
   let importPreview = [];
   let importFileName = '';
+  let importNewEmployees = new Map();
+  let importInfo = {};
   let toastTimer;
 
   function initialState() {
@@ -395,7 +397,7 @@
       <div class="settings-layout"><section class="panel"><div class="panel-header"><div><div class="panel-title">قواعد الدوام والخصم</div><div class="panel-subtitle">تنطبق الإعدادات العامة عند إضافة موظف جديد</div></div></div>
         <div class="settings-section"><h3>أيام العمل الافتراضية</h3><p>يمكن تخصيص الأيام وموعد العمل لكل موظف من صفحة الموظفين.</p><div class="checkbox-grid">${days}</div></div>
         <div class="settings-section"><h3>طريقة احتساب الخصومات</h3><p>ضع قيمة الدقيقة يدويًا؛ اتركها صفرًا ليحسبها التطبيق من راتب الموظف وعدد ساعات العمل.</p><div class="field-grid"><div class="field"><label for="graceMinutes">فترة السماح (دقيقة)</label><input id="graceMinutes" type="number" min="0" max="300" value="${esc(s.graceMinutes)}"></div><div class="field"><label for="absenceDays">خصم الغياب (أجر يوم ×)</label><input id="absenceDays" type="number" min="0" max="5" step="0.25" value="${esc(s.absenceDays)}"></div><div class="field"><label for="latePerMinute">خصم دقيقة التأخير (ج.م)</label><input id="latePerMinute" type="number" min="0" step="0.01" value="${esc(s.latePerMinute)}"><span class="field-help">صفر = الراتب ÷ أيام الراتب ÷ ساعات العمل.</span></div><div class="field"><label for="earlyPerMinute">خصم دقيقة الانصراف المبكر (ج.م)</label><input id="earlyPerMinute" type="number" min="0" step="0.01" value="${esc(s.earlyPerMinute)}"><span class="field-help">صفر = احتساب تلقائي مثل خصم التأخير.</span></div><div class="field"><label for="salaryDays">أيام حساب الراتب في الشهر</label><input id="salaryDays" type="number" min="1" max="31" value="${esc(s.salaryDays)}"></div><div class="field"><label for="workHours">ساعات العمل اليومية</label><input id="workHours" type="number" min="1" max="24" step="0.5" value="${esc(s.workHours)}"></div></div><div style="margin-top:13px"><button class="primary-btn" data-action="save-settings">حفظ قواعد الحساب</button></div></div>
-      </section><div style="display:grid;gap:16px;align-content:start"><section class="panel"><div class="panel-header"><div><div class="panel-title">استيراد PDF</div><div class="panel-subtitle">تنسيق التاريخ وفترة التغطية</div></div></div><div class="settings-section"><div class="field"><label for="dateFormat">ترتيب التاريخ في ملف PDF</label><select id="dateFormat"><option value="dmy" ${s.dateFormat === 'dmy' ? 'selected' : ''}>يوم / شهر / سنة (مثال 13/10/2026)</option><option value="mdy" ${s.dateFormat === 'mdy' ? 'selected' : ''}>شهر / يوم / سنة (مثال 10/13/2026)</option></select></div><p style="margin-top:11px">الافتراضي يوم/شهر/سنة. عند الاستيراد تُعرض الحركات للمراجعة قبل حفظها. ملفات PDF المصورة التي لا تحتوي نصًا قابلًا للتحديد لا يمكن استخراجها دون OCR.</p><div class="coverage-line"><span class="status-dot"></span><span>فترة السجل: <strong>${coverage.start ? `${esc(fmtDate(coverage.start))} — ${esc(fmtDate(coverage.end))}` : 'لا توجد بيانات مستوردة'}</strong></span></div></div></section>
+      </section><div style="display:grid;gap:16px;align-content:start"><section class="panel"><div class="panel-header"><div><div class="panel-title">استيراد PDF</div><div class="panel-subtitle">تنسيق التاريخ وفترة التغطية</div></div></div><div class="settings-section"><div class="field"><label for="dateFormat">ترتيب التاريخ في ملف PDF</label><select id="dateFormat"><option value="dmy" ${s.dateFormat === 'dmy' ? 'selected' : ''}>يوم / شهر / سنة (مثال 13/10/2026)</option><option value="mdy" ${s.dateFormat === 'mdy' ? 'selected' : ''}>شهر / يوم / سنة (مثال 10/13/2026)</option></select></div><p style="margin-top:11px">الافتراضي يوم/شهر/سنة. عند الاستيراد تُعرض الحركات للمراجعة قبل حفظها، ويُربط كل عمود بالاسم/الكود المكتوب فوقه، ويُحدَّد الحضور والانصراف من ترتيب بصمات اليوم لا من خانة الحركة في الملف. ملفات PDF المصورة التي لا تحتوي نصًا قابلًا للتحديد لا يمكن استخراجها دون OCR.</p><div class="coverage-line"><span class="status-dot"></span><span>فترة السجل: <strong>${coverage.start ? `${esc(fmtDate(coverage.start))} — ${esc(fmtDate(coverage.end))}` : 'لا توجد بيانات مستوردة'}</strong></span></div></div></section>
       <section class="panel"><div class="panel-header"><div><div class="panel-title">النسخ الاحتياطي والخصوصية</div><div class="panel-subtitle">استعد بياناتك عند تغيير الجهاز أو المتصفح</div></div></div><div class="settings-section"><p>تُحفظ بياناتك داخل هذا المتصفح فقط، ولا تُرسل إلى خادم. نزّل نسخة JSON للاحتفاظ بها، ويمكنك استعادتها لاحقًا.</p><div class="heading-actions"><button class="secondary-btn" data-action="backup">تنزيل نسخة احتياطية</button><button class="secondary-btn" data-action="restore">استعادة نسخة JSON</button></div><div style="margin-top:12px"><button class="danger-btn small-btn" data-action="clear-data">مسح كل البيانات المحلية</button></div></div></section></div></div>`;
   }
 
@@ -558,18 +560,24 @@
     if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) return null;
     return toISODate(d);
   }
-  function normalizeClock(h, m, s = '00') {
-    let hour = Number(h), minute = Number(m), sec = Number(s);
-    if (hour > 23 || minute > 59 || sec > 59) return null;
-    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(sec).padStart(2, '0')}`.slice(0, 5);
+  // ───────────── استيراد تقرير البصمة (PDF) ─────────────
+  // القواعد:
+  //  1) الموظف يُحدَّد من الاسم/الكود المكتوب فوق كل عمود، مثل: Mas3ood(31).
+  //  2) خانة «حضور/انصراف» في الملف لا تُستخدم إطلاقًا؛ أول حركة في اليوم = حضور، وآخر حركة = انصراف.
+  //  3) التقرير يعرض الوقت بنظام 12 ساعة بدون ص/م، فيُقدَّر الصباح/المساء من ترتيب الحركات وموعد دوام الموظف.
+  const DUP_SECONDS = 60; // بصمتان خلال هذه المدة تُعدّان بصمة مكررة واحدة
+  const TIMESTAMP_RE = /(\d{1,2})\s*[\/.-]\s*(\d{1,2})\s*[\/.-]\s*(\d{4})\s+(\d{1,2})\s*:\s*(\d{2})(?:\s*:\s*(\d{2}))?(?:\s*(صباحًا|صباحا|مساءً|مساءا|مساء|A\.M\.|P\.M\.|AM|PM|ص|م)(?![\u0600-\u06FF]))?/gi;
+  function ampmOf(token) {
+    if (!token) return null;
+    const t = token.replace(/\./g, '').toLowerCase();
+    return t === 'am' || t.startsWith('ص') ? 'AM' : 'PM';
   }
-  const TIMESTAMP_RE = /(\d{1,2})\s*[\/.-]\s*(\d{1,2})\s*[\/.-]\s*(\d{4})\s+(\d{1,2})\s*:\s*(\d{2})(?:\s*:\s*(\d{2}))?/g;
   function timestampsIn(text) {
     const found = []; TIMESTAMP_RE.lastIndex = 0; let match;
     while ((match = TIMESTAMP_RE.exec(text)) !== null) {
       const date = dateFromParts(match[1], match[2], match[3]);
-      const time = normalizeClock(match[4], match[5], match[6] || '00');
-      if (date && time) found.push({ date, time, index: match.index, length: match[0].length });
+      const hour = Number(match[4]), minute = Number(match[5]), second = Number(match[6] || 0);
+      if (date && hour <= 23 && minute <= 59 && second <= 59) found.push({ date, hour, minute, second, ampm: ampmOf(match[7]), index: match.index });
     }
     return found;
   }
@@ -582,11 +590,25 @@
     }) || null;
   }
   function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-  function classifyType(text) {
-    const t = normalizeText(text);
-    if (t.includes('انصراف') || t.includes('انصراف') || /\b(check\s*out|clock\s*out|out)\b/i.test(t)) return 'out';
-    if (t.includes('حضور') || /\b(check\s*in|clock\s*in|in)\b/i.test(t)) return 'in';
-    return '';
+
+  // عنوان العمود: «الاسم(الكود)»
+  function headerFromText(text) {
+    const t = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!t || timestampsIn(t).length) return null;
+    let name, code, m = t.match(/^(.{1,60}?)\s*\(\s*(\d{1,10})\s*\)$/);
+    if (m) { name = m[1]; code = m[2]; }
+    else if ((m = t.match(/^\(\s*(\d{1,10})\s*\)\s*(.{1,60})$/))) { code = m[1]; name = m[2]; }
+    else return null;
+    name = name.trim();
+    if (!name) return null;
+    return { name, code, key: code ? `c:${normalizeText(code)}` : `n:${normalizeText(name)}` };
+  }
+  function matchHeaderEmployee(name, code) {
+    const c = normalizeText(code), n = normalizeText(name);
+    return (c && state.employees.find(e => normalizeText(e.code) === c))
+      || (n && state.employees.find(e => normalizeText(e.name) === n))
+      || (n.length > 2 && state.employees.find(e => { const en = normalizeText(e.name); return en.length > 2 && (en.includes(n) || n.includes(en)); }))
+      || null;
   }
 
   async function readPdf(file) {
@@ -596,16 +618,19 @@
       toast('جارٍ قراءة صفحات ملف PDF…', 'success');
       const data = new Uint8Array(await file.arrayBuffer());
       const pdf = await pdfjsLib.getDocument({ data }).promise;
-      const parsed = [];
+      const punches = []; let carry = [];
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
         const page = await pdf.getPage(pageNum);
         const content = await page.getTextContent();
-        const items = content.items.filter(x => x.str && x.str.trim()).map(x => ({ text: x.str.trim(), x: x.transform[4], y: x.transform[5] }));
-        parsed.push(...parsePdfPage(items, pageNum));
+        const items = content.items.filter(x => x.str && x.str.trim()).map(x => ({ text: x.str.trim(), x: x.transform[4], y: x.transform[5], width: x.width || 0 }));
+        const res = parsePdfPage(items, pageNum, carry);
+        punches.push(...res.punches);
+        if (res.headers.length) carry = res.headers.map(h => ({ ...h, y: Infinity }));
       }
-      if (!parsed.length) { toast('لم أجد تواريخ وأوقات قابلة للقراءة. قد يكون PDF صورة ممسوحة أو يحتاج صيغة أخرى.', 'warning'); return; }
+      if (!punches.length) { toast('لم أجد تواريخ وأوقات قابلة للقراءة. قد يكون PDF صورة ممسوحة أو يحتاج صيغة أخرى.', 'warning'); return; }
+      const built = buildImportRows(punches);
       importFileName = file.name;
-      importPreview = normalizePreview(parsed);
+      importPreview = built.rows; importNewEmployees = built.newEmployees; importInfo = built.info;
       showImportPreview();
     } catch (error) {
       console.error(error);
@@ -613,72 +638,148 @@
     }
   }
 
-  function parsePdfPage(items, pageNum) {
-    const employeeHeaders = [];
-    items.forEach(item => { const e = matchEmployee(item.text); if (e) employeeHeaders.push({ id: e.id, x: item.x, text: item.text }); });
-    employeeHeaders.sort((a, b) => a.x - b.x);
-    const uniqueHeaders = employeeHeaders.filter((h, i) => employeeHeaders.findIndex(x => x.id === h.id) === i);
+  // دمج الخلايا التي قسّمها PDF إلى أجزاء (التاريخ + الوقت + ص/م، أو الاسم + (الكود))
+  function mergeSplitItems(list) {
+    const out = [];
+    list.forEach(item => {
+      const prev = out[out.length - 1];
+      const gap = prev ? item.x - (prev.x + (prev.width || 0)) : 999;
+      const prevIsDate = prev && /^\d{1,2}\s*[\/.-]\s*\d{1,2}\s*[\/.-]\s*\d{4}$/.test(prev.text);
+      const isTime = /^\d{1,2}\s*:\s*\d{2}(\s*:\s*\d{2})?(\s*(AM|PM|ص|م))?$/i.test(item.text);
+      const isMark = /^(AM|PM|ص|م)$/i.test(item.text) && prev && /\d:\d{2}/.test(prev.text);
+      const isCode = /^\(\s*\d{1,10}\s*\)$/.test(item.text) && prev && !/\d[\/.-]\d/.test(prev.text);
+      if (prev && gap < 14 && ((prevIsDate && isTime) || isMark)) { prev.text += ` ${item.text}`; prev.width = (prev.width || 0) + gap + (item.width || 0); }
+      else if (prev && gap < 8 && isCode) { prev.text += item.text; prev.width = (prev.width || 0) + gap + (item.width || 0); }
+      else out.push({ ...item });
+    });
+    return out;
+  }
+
+  function parsePdfPage(items, pageNum, carryHeaders = []) {
     const rows = [];
-    items.sort((a, b) => b.y - a.y || a.x - b.x).forEach(item => {
+    items.slice().sort((a, b) => b.y - a.y || a.x - b.x).forEach(item => {
       let row = rows.find(r => Math.abs(r.y - item.y) <= 3.2);
       if (!row) { row = { y: item.y, items: [] }; rows.push(row); }
       row.items.push(item);
     });
-    const results = [];
+    rows.forEach(row => { row.items.sort((a, b) => a.x - b.x); row.items = mergeSplitItems(row.items); });
+    rows.sort((a, b) => b.y - a.y);
+
+    const headers = [];
+    rows.forEach(row => row.items.forEach(item => { const h = headerFromText(item.text); if (h) headers.push({ ...h, x: item.x, y: row.y }); }));
+    const activeHeaders = headers.length ? headers : carryHeaders;
+
+    // أقرب عنوان فوق البصمة في نفس العمود
+    function headerFor(stamp) {
+      if (!activeHeaders.length) return null;
+      const above = activeHeaders.filter(h => h.y >= stamp.y - 1);
+      const pool = above.length ? above : activeHeaders;
+      const minDx = Math.min(...pool.map(h => Math.abs(h.x - stamp.x)));
+      return pool.filter(h => Math.abs(h.x - stamp.x) <= minDx + 40).sort((a, b) => (a.y - stamp.y) - (b.y - stamp.y))[0] || null;
+    }
+
+    const punches = [];
     rows.forEach(row => {
-      row.items.sort((a, b) => a.x - b.x);
       const lineText = row.items.map(x => x.text).join(' ');
-      const stamps = [];
       row.items.forEach(item => {
-        const ms = timestampsIn(item.text);
-        ms.forEach(stamp => stamps.push({ ...stamp, x: item.x, textItem: item.text }));
-      });
-      if (!stamps.length) {
-        timestampsIn(lineText).forEach(stamp => {
-          const nearestItem = row.items.reduce((best, item) => {
-            const current = Math.abs(item.x - stamp.index);
-            return !best || current < best.dist ? { item, dist: current } : best;
-          }, null);
-          stamps.push({ ...stamp, x: nearestItem?.item.x || 0, textItem: lineText });
+        timestampsIn(item.text).forEach(stamp => {
+          const header = headerFor({ x: item.x, y: row.y });
+          let employeeId = '', headerKey = '', headerName = '', headerCode = '';
+          if (header) {
+            headerKey = header.key; headerName = header.name; headerCode = header.code;
+            employeeId = matchHeaderEmployee(header.name, header.code)?.id || '';
+          } else {
+            employeeId = (matchEmployee(lineText) || matchEmployee(item.text))?.id || '';
+          }
+          punches.push({ employeeId, headerKey, headerName, headerCode, date: stamp.date, hour: stamp.hour, minute: stamp.minute, second: stamp.second, ampm: stamp.ampm, page: pageNum });
         });
-      }
-      if (!stamps.length) return;
-      const statusItems = row.items.filter(item => classifyType(item.text));
-      const rowType = classifyType(lineText);
-      stamps.forEach(stamp => {
-        let employee = null;
-        if (uniqueHeaders.length) {
-          const header = uniqueHeaders.reduce((best, h) => !best || Math.abs(h.x - stamp.x) < Math.abs(best.x - stamp.x) ? h : best, null);
-          employee = employeeById(header?.id);
-        }
-        if (!employee) employee = matchEmployee(lineText) || matchEmployee(stamp.textItem);
-        let type = rowType;
-        if (statusItems.length > 1) {
-          const nearestStatus = statusItems.reduce((best, item) => !best || Math.abs(item.x - stamp.x) < Math.abs(best.item.x - stamp.x) ? { item, type: classifyType(item.text) } : best, null);
-          if (nearestStatus) type = nearestStatus.type;
-        } else if (statusItems.length === 1) type = classifyType(statusItems[0].text);
-        results.push({ employeeId: employee?.id || '', date: stamp.date, time: stamp.time, type, page: pageNum, source: 'pdf', selected: true });
       });
     });
-    return results;
+    return { punches, headers };
   }
 
-  function normalizePreview(rows) {
-    const map = new Map();
-    rows.forEach(row => {
-      const key = `${row.employeeId || '?'}|${row.date}|${row.type || '?'}`;
-      // Do not merge unidentified rows before the user assigns an employee and operation.
-      const mapKey = row.employeeId && row.type ? key : `${key}|pending|${row.page || 0}|${row.time}|${map.size}`;
-      const prev = map.get(mapKey);
-      if (!prev) map.set(mapKey, { ...row, duplicates: 1 });
-      else {
-        prev.duplicates += 1;
-        if (row.type === 'in' && row.time < prev.time) prev.time = row.time;
-        if (row.type === 'out' && row.time > prev.time) prev.time = row.time;
-        if (!prev.employeeId && row.employeeId) prev.employeeId = row.employeeId;
-      }
+  // الاحتمالات الممكنة للوقت (بالثواني) — الملف قد يعرض 12 ساعة بدون ص/م
+  function timeCandidates(p, is24h) {
+    const base = p.minute * 60 + p.second;
+    if (p.hour === 0 || p.hour > 12 || is24h) return [p.hour * 3600 + base];
+    if (p.ampm) return [((p.hour % 12) + (p.ampm === 'PM' ? 12 : 0)) * 3600 + base];
+    const am = (p.hour % 12) * 3600 + base;
+    return [am, am + 43200];
+  }
+  const nearest = (list, target) => list.reduce((best, v) => best === null || Math.abs(v - target) < Math.abs(best - target) ? v : best, null);
+  function clockText(sec) { return `${String(Math.floor(sec / 3600) % 24).padStart(2, '0')}:${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}`; }
+
+  // يحوّل بصمات يوم واحد (بترتيب ظهورها في التقرير) إلى حضور + انصراف
+  function resolveDay(list, employee, is24h) {
+    const shiftStart = timeMinutes(employee?.shiftStart || '09:00') * 60;
+    const shiftEnd = timeMinutes(employee?.shiftEnd || '17:00') * 60;
+    const allCertain = list.every(p => timeCandidates(p, is24h).length === 1);
+    const ordered = allCertain ? list.slice().sort((a, b) => timeCandidates(a, is24h)[0] - timeCandidates(b, is24h)[0]) : list;
+    let inferred = false;
+    const secs = [];
+    ordered.forEach((p, idx) => {
+      const cands = timeCandidates(p, is24h);
+      if (cands.length === 1) { secs.push(cands[0]); return; }
+      inferred = true;
+      if (!secs.length) { secs.push(nearest(cands, shiftStart)); return; } // أول بصمة: الأقرب لموعد بداية الدوام
+      const prev = secs[secs.length - 1];
+      const valid = cands.filter(c => c >= prev);
+      if (!valid.length) { secs.push(Math.max(...cands)); return; }
+      if (idx === ordered.length - 1) {
+        const dup = valid.find(c => c - prev <= DUP_SECONDS);   // بصمة مكررة بعد ثوانٍ
+        secs.push(dup !== undefined ? dup : nearest(valid, shiftEnd)); // آخر بصمة: الأقرب لموعد نهاية الدوام
+      } else secs.push(Math.min(...valid));
     });
-    return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+    // دمج البصمات المتقاربة جدًا (ضغط مكرر على الجهاز)
+    const clusters = [];
+    secs.forEach(sec => {
+      const last = clusters[clusters.length - 1];
+      if (last && sec - last.last <= DUP_SECONDS) { last.last = sec; last.count += 1; } else clusters.push({ first: sec, last: sec, count: 1 });
+    });
+    if (clusters.length === 1) {
+      const c = clusters[0];
+      const type = c.first < (shiftStart + shiftEnd) / 2 ? 'in' : 'out';
+      return { inferred, single: true, items: [{ type, time: clockText(c.first), duplicates: c.count, ignored: 0 }] };
+    }
+    const first = clusters[0], last = clusters[clusters.length - 1];
+    return {
+      inferred, single: false,
+      items: [
+        { type: 'in', time: clockText(first.first), duplicates: first.count, ignored: 0 },
+        { type: 'out', time: clockText(last.last), duplicates: last.count, ignored: clusters.length - 2 }
+      ]
+    };
+  }
+
+  function buildImportRows(punches) {
+    const is24h = punches.some(p => p.hour === 0 || p.hour > 12);
+    const groups = new Map(), newEmployees = new Map();
+    punches.forEach(p => {
+      let ref = p.employeeId || '';
+      if (!ref && p.headerKey) { ref = `new:${p.headerKey}`; if (!newEmployees.has(ref)) newEmployees.set(ref, { name: p.headerName, code: p.headerCode }); }
+      const key = `${ref || `?${p.page}`}|${p.date}`;
+      if (!groups.has(key)) groups.set(key, { ref, date: p.date, page: p.page, list: [] });
+      groups.get(key).list.push(p);
+    });
+    const rows = []; const info = { inferred: false, singles: 0, ignored: 0, is24h };
+    groups.forEach(g => {
+      const res = resolveDay(g.list, employeeById(g.ref), is24h);
+      if (res.inferred) info.inferred = true;
+      if (res.single) info.singles += 1;
+      res.items.forEach(it => {
+        info.ignored += it.ignored;
+        rows.push({ employeeId: g.ref, date: g.date, time: it.time, type: it.type, page: g.page, source: 'pdf', selected: true, duplicates: it.duplicates, ignored: it.ignored, guessed: res.inferred, single: res.single });
+      });
+    });
+    const nameOf = r => normalizeText(employeeById(r.employeeId)?.name || newEmployees.get(r.employeeId)?.name || '~');
+    rows.sort((a, b) => nameOf(a).localeCompare(nameOf(b)) || a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+    return { rows, newEmployees, info };
+  }
+
+  function importEmployeeOptions(selected = '') {
+    const existing = state.employees.filter(e => e.active !== false || e.id === selected);
+    const news = Array.from(importNewEmployees.entries());
+    return `<option value="">— اختر الموظف —</option>${existing.map(e => `<option value="${esc(e.id)}" ${e.id === selected ? 'selected' : ''}>${esc(employeeLabel(e))}</option>`).join('')}${news.map(([ref, e]) => `<option value="${esc(ref)}" ${ref === selected ? 'selected' : ''}>＋ موظف جديد: ${esc(e.name)}${e.code ? ` — ${esc(e.code)}` : ''}</option>`).join('')}`;
   }
 
   function showImportPreview() {
@@ -686,8 +787,18 @@
     const duplicates = importPreview.reduce((sum, r) => sum + Math.max(0, r.duplicates - 1), 0);
     const recognized = importPreview.filter(r => r.employeeId).length;
     const unmatched = importPreview.length - recognized;
-    const rows = importPreview.map((r, i) => `<tr><td><span class="num-ltr">${esc(fmtDate(r.date))}</span><div class="person-meta">صفحة ${fmtNumber(r.page)}</div></td><td><span class="num-ltr">${esc(r.time)}</span></td><td><select class="import-select" data-preview-employee="${i}">${employeeOptions(r.employeeId)}</select></td><td><select class="import-select" data-preview-type="${i}"><option value="" ${!r.type ? 'selected' : ''}>— اختر —</option><option value="in" ${r.type === 'in' ? 'selected' : ''}>حضور</option><option value="out" ${r.type === 'out' ? 'selected' : ''}>انصراف</option></select></td><td>${r.duplicates > 1 ? badge(`دمج ${fmtNumber(r.duplicates)} حركات`, 'amber') : badge('جديدة', 'green')}</td></tr>`).join('');
-    const body = `<div class="import-summary"><strong>الملف:</strong> ${esc(importFileName)} · ${fmtNumber(importPreview.length)} حركة بعد دمج المكررات · ${fmtNumber(recognized)} مرتبطة بموظف${unmatched ? ` · ${fmtNumber(unmatched)} تحتاج تعيينًا` : ''}${duplicates ? ` · تم دمج ${fmtNumber(duplicates)} تكرار` : ''}<br>راجع الموظف ونوع الحركة قبل الحفظ. إذا كان التاريخ ملتبسًا، ألغِ الاستيراد واضبط ترتيبه من الإعدادات ثم أعد قراءة الملف.</div><div class="table-wrap"><table class="data-table import-table"><thead><tr><th>التاريخ</th><th>الوقت</th><th>الموظف</th><th>العملية</th><th>المراجعة</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    const people = new Set(importPreview.map(r => r.employeeId).filter(Boolean)).size;
+    const rows = importPreview.map((r, i) => {
+      const notes = [
+        r.duplicates > 1 ? badge(`دمج ${fmtNumber(r.duplicates)} بصمات`, 'amber') : '',
+        r.ignored > 0 ? badge(`تجاهل ${fmtNumber(r.ignored)} بصمة وسطى`, 'gray') : '',
+        r.single ? badge('بصمة واحدة فقط', 'amber') : '',
+        r.guessed ? badge('ص/م مُقدَّر', 'blue') : ''
+      ].join(' ') || badge('جديدة', 'green');
+      return `<tr><td><span class="num-ltr">${esc(fmtDate(r.date))}</span><div class="person-meta">صفحة ${fmtNumber(r.page)}</div></td><td><span class="num-ltr">${esc(r.time)}</span></td><td><select class="import-select" data-preview-employee="${i}">${importEmployeeOptions(r.employeeId)}</select></td><td><select class="import-select" data-preview-type="${i}"><option value="" ${!r.type ? 'selected' : ''}>— اختر —</option><option value="in" ${r.type === 'in' ? 'selected' : ''}>حضور</option><option value="out" ${r.type === 'out' ? 'selected' : ''}>انصراف</option></select></td><td>${notes}</td></tr>`;
+    }).join('');
+    const newList = Array.from(importNewEmployees.values()).map(e => `${esc(e.name)}${e.code ? ` (${esc(e.code)})` : ''}`).join('، ');
+    const body = `<div class="import-summary"><strong>الملف:</strong> ${esc(importFileName)} · ${fmtNumber(importPreview.length)} حركة لـ ${fmtNumber(people)} موظف · ${fmtNumber(recognized)} مرتبطة بموظف${unmatched ? ` · ${fmtNumber(unmatched)} تحتاج تعيينًا` : ''}${duplicates ? ` · تم دمج ${fmtNumber(duplicates)} بصمة مكررة` : ''}<br>• الموظف يُؤخذ من الاسم المكتوب فوق كل عمود، وأول بصمة في اليوم = حضور وآخر بصمة = انصراف (لا تُستخدم خانة الحركة في الملف).${importInfo.inferred ? '<br>• الملف يعرض الوقت بنظام 12 ساعة بدون ص/م، فتم تقدير الصباح/المساء من موعد دوام كل موظف — راجع الصفوف المعلّمة «ص/م مُقدَّر».' : ''}${importInfo.singles ? `<br>• ${fmtNumber(importInfo.singles)} يوم فيه بصمة واحدة فقط (غالبًا يوم لم ينتهِ بعد أو نُسيت بصمته).` : ''}${newList ? `<br>• موظفون غير مسجلين سيُنشؤون عند الاعتماد: ${newList} — اضبط راتبهم ومواعيد دوامهم من صفحة الموظفين.` : ''}<br>إذا كان التاريخ ملتبسًا، ألغِ الاستيراد واضبط ترتيبه من الإعدادات ثم أعد قراءة الملف.</div><div class="table-wrap"><table class="data-table import-table"><thead><tr><th>التاريخ</th><th>الوقت</th><th>الموظف</th><th>العملية</th><th>المراجعة</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     openDialog(dialog, 'مراجعة حركات ملف البصمة', `${fmtNumber(importPreview.length)} حركة مقروءة قبل اعتمادها`, body, `<button class="primary-btn" id="confirmImport">اعتماد الحركات</button><button class="secondary-btn" id="cancelImport">إلغاء</button>`);
     $$('[data-preview-employee]', dialog).forEach(select => select.addEventListener('change', e => { importPreview[Number(e.target.dataset.previewEmployee)].employeeId = e.target.value; }));
     $$('[data-preview-type]', dialog).forEach(select => select.addEventListener('change', e => { importPreview[Number(e.target.dataset.previewType)].type = e.target.value; }));
@@ -696,12 +807,22 @@
   }
 
   function commitImportPreview() {
-    const valid = importPreview.filter(r => r.selected && employeeById(r.employeeId) && (r.type === 'in' || r.type === 'out') && r.date && r.time);
+    const known = r => employeeById(r.employeeId) || importNewEmployees.has(r.employeeId);
+    const valid = importPreview.filter(r => r.selected && known(r) && (r.type === 'in' || r.type === 'out') && r.date && r.time);
     const skipped = importPreview.length - valid.length;
     if (!valid.length) { toast('لا توجد حركات مكتملة للاعتماد. اربط الموظف وحدد نوع الحركة أولًا.', 'warning'); return; }
+    const createdIds = new Map();
+    function realEmployeeId(ref) {
+      if (employeeById(ref)) return ref;
+      if (createdIds.has(ref)) return createdIds.get(ref);
+      const info = importNewEmployees.get(ref);
+      const emp = { id: uid(), name: info.name, code: info.code || '', salary: 0, allowance: 0, shiftStart: '09:00', shiftEnd: '17:00', workDays: state.defaultWorkDays || [0, 1, 2, 3, 4, 6], active: true };
+      state.employees.push(emp); createdIds.set(ref, emp.id);
+      return emp.id;
+    }
     let added = 0, duplicates = 0;
     valid.forEach(row => {
-      const rec = { id: uid(), employeeId: row.employeeId, date: row.date, time: row.time, type: row.type, source: 'pdf', duplicates: row.duplicates || 1 };
+      const rec = { id: uid(), employeeId: realEmployeeId(row.employeeId), date: row.date, time: row.time, type: row.type, source: 'pdf', duplicates: row.duplicates || 1 };
       const existing = state.records.find(r => uniqueKey(r) === uniqueKey(rec));
       if (existing) {
         duplicates += 1;
@@ -711,8 +832,8 @@
       } else { state.records.push(rec); added++; }
       expandCoverage(rec.date);
     });
-    saveState(); $('#importDialog').close(); importPreview = []; activePage = 'attendance'; renderPage();
-    toast(`تم استيراد ${fmtNumber(added)} حركة جديدة ودمج ${fmtNumber(duplicates)} تكرار${skipped ? `، وتخطي ${fmtNumber(skipped)} حركة غير مكتملة` : ''}.`);
+    saveState(); $('#importDialog').close(); importPreview = []; importNewEmployees = new Map(); activePage = 'attendance'; renderPage();
+    toast(`تم استيراد ${fmtNumber(added)} حركة جديدة ودمج ${fmtNumber(duplicates)} تكرار${createdIds.size ? `، وإضافة ${fmtNumber(createdIds.size)} موظف جديد (اضبط راتبهم من صفحة الموظفين)` : ''}${skipped ? `، وتخطي ${fmtNumber(skipped)} حركة غير مكتملة` : ''}.`);
   }
 
   function csvCell(value) { return `"${String(value == null ? '' : value).replace(/"/g, '""')}"`; }
